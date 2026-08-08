@@ -1,0 +1,62 @@
+<!-- Grafana popover (floating button removed per zaq — session cost links only) -->
+<div id="grafana-popover-btn" style="display:none"></div>
+<div id="grafana-popover-overlay" onclick="toggleGrafanaPopover()"
+     style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9998;background:rgba(0,0,0,0.6);">
+</div>
+<div id="grafana-popover" style="display:none;position:fixed;top:5%;left:5%;width:90%;height:90%;z-index:9999;
+     border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.5);
+     background:#111;border:1px solid rgba(234,179,8,0.3);">
+  <div style="display:flex;align-items:center;justify-content:space-between;
+       padding:8px 16px;background:#1a1a2e;border-bottom:1px solid rgba(234,179,8,0.2);">
+    <span style="color:#EAB308;font-weight:600;font-size:14px;">
+      &#x1F4CA; Grafana — AI Usage Dashboard
+    </span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a id="grafana-open-tab" href="/grafana-proxy/d/ai-usage-tracking/f09f908e-ai-usage-and-cost-tracking?from=now-7d&to=now&kiosk=tv"
+         target="_blank" title="Open in new tab"
+         style="color:#94a3b8;font-size:16px;text-decoration:none;padding:4px 8px;
+                border-radius:4px;transition:background 0.2s;"
+         onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+         onmouseout="this.style.background='transparent'">
+        &#x2197;
+      </a>
+      <span onclick="toggleGrafanaPopover()" title="Close"
+            style="color:#94a3b8;font-size:20px;cursor:pointer;padding:4px 8px;
+                   border-radius:4px;transition:background 0.2s;line-height:1;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+            onmouseout="this.style.background='transparent'">&times;</span>
+    </div>
+  </div>
+  <iframe id="grafana-iframe" src="/grafana-proxy/d/ai-usage-tracking/f09f908e-ai-usage-and-cost-tracking?from=now-7d&to=now&kiosk=tv"
+          style="width:100%;height:calc(100% - 44px);border:none;background:#fff;">
+  </iframe>
+</div>
+<script>
+function toggleGrafanaPopover(url) {
+  var overlay = document.getElementById('grafana-popover-overlay');
+  var popover = document.getElementById('grafana-popover');
+  var btn = document.getElementById('grafana-popover-btn');
+  var isOpen = popover.style.display === 'block';
+  if (isOpen && !url) {
+    overlay.style.display = 'none';
+    popover.style.display = 'none';
+    btn.style.display = 'flex';
+    return;
+  }
+  overlay.style.display = 'block';
+  popover.style.display = 'block';
+  btn.style.display = 'none';
+  var iframe = document.getElementById('grafana-iframe');
+  var target = url || '/grafana-proxy/d/ai-usage-tracking/f09f908e-ai-usage-and-cost-tracking?from=now-7d&to=now&kiosk=tv';
+  iframe.src = target + (target.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
+}
+window.openGrafanaPopover = function(url) {
+  toggleGrafanaPopover(url);
+  // Update the "open in new tab" link to match the current iframe URL
+  var tabLink = document.getElementById('grafana-open-tab');
+  if (tabLink && url) tabLink.href = url;
+};
+</script>
+
+</body>
+</html>

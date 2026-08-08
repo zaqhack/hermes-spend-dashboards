@@ -1,0 +1,15 @@
+        """Proxy /grafana-proxy/* or /public/* requests to the LAN Grafana instance."""
+        path = parsed.path
+        if not path.startswith('/grafana-proxy') and not path.startswith('/public/') and not path.startswith('/apis/') and not path.startswith('/avatar/'):
+            return False
+        
+        import http.client
+        
+        # Determine the sub-path to forward to nginx/Grafana
+        # nginx expects the full /grafana-proxy/* path for subpath rewriting
+        if path.startswith('/grafana-proxy'):
+            subpath = path  # keep full path for nginx
+        else:
+            subpath = path  # /public/... goes as-is
+        if not subpath:
+            subpath = '/'

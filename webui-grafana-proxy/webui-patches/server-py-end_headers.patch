@@ -1,0 +1,16 @@
+    def end_headers(self) -> None:
+        # Skip CSP injection for Grafana-proxied responses — the proxy already strips
+        # frame-ancestors from Grafana's headers, and the WebUI's own CSP would
+        # re-add frame-ancestors 'none', breaking the iframe.
+        if getattr(self, 'path', '').startswith(('/grafana-proxy', '/public/', '/apis/', '/avatar/')):
+            super().end_headers()
+            return
+        extra_connect_src = getattr(self, "_csp_extra_connect_src", None)
+        extra_frame_src = getattr(self, "_csp_extra_frame_src", None)
+        self.send_header("Content-Security-Policy-Report-Only", self.csp_report_only_policy(extra_connect_src, extra_frame_src))
+        self.send_header("Report-To", self._CSP_REPORT_TO)
+        super().end_headers()
+
+    def log_message(self, fmt, *args): pass  # suppress default Apache-style log
+
+    @staticmethod
