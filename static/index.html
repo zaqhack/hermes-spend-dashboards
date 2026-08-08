@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ripper Services</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --sidebar-bg: #0f1629;
+    --text: #e0e0e0;
+    --text-dim: #8892b0;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --accent: #7c3aed;
+    --border: #2d2d5e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 155px; min-width: 155px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 0.75rem;
+    display: flex; flex-direction: column; gap: 1.25rem;
+    font-size: 0.8rem;
+  }
+  .sidebar h2 {
+    font-size: 0.85rem; text-align: center;
+    color: var(--text-dim); font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .stat-block { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .stat-label { font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-value { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; font-family: 'SF Mono','Fira Code',monospace; }
+  .stat-sub { font-size: 0.65rem; color: var(--text-dim); }
+  .stat-bar { width: 100%; height: 4px; background: #1e2d4a; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+  .stat-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease, background 1s ease; }
+  .bar-green { background: var(--green); }
+  .bar-yellow { background: var(--yellow); }
+  .bar-orange { background: var(--orange); }
+  .bar-red { background: var(--red); }
+  .stat-temp { font-size: 0.75rem; font-weight: 600; }
+
+  /* ── Main ── */
+  .main { flex: 1; padding: 2rem 2rem 2rem 1.5rem; display: flex; justify-content: center; }
+  .container { max-width: 500px; width: 100%; }
+  header { text-align: center; margin-bottom: 1.5rem; }
+  header h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
+  header p { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.2rem; }
+  header .suspend-hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.4rem; display: none; }
+
+  /* ── 3-column service rows ── */
+  .service-list { display: flex; flex-direction: column; gap: 4px; }
+  .service-row {
+    display: grid;
+    grid-template-columns: 260px 85px 70px;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 14px;
+    transition: border-color 0.2s;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .service-row:visited { color: var(--text); }
+  .service-row:hover { border-color: var(--accent); }
+  .service-name { font-size: 0.92rem; font-weight: 500; color: var(--text); }
+  .service-name.suspended-name { color: var(--text-dim); font-style: italic; }
+  .service-type {
+    font-size: 0.8rem; font-weight: 600;
+    text-align: center;
+    font-family: 'SF Mono','Fira Code',monospace;
+  }
+  .service-port {
+    font-size: 0.8rem;
+    text-align: right;
+    font-family: 'SF Mono','Fira Code',monospace;
+  }
+  .type-up { color: var(--blue); }
+  .type-down { color: var(--red); }
+  .type-suspended { color: var(--yellow); }
+  .port-up { color: var(--blue); }
+  .port-down { color: var(--red); }
+  .port-none { color: var(--text-dim); }
+  .port-suspended { color: var(--yellow); }
+
+  .timestamp { text-align: center; color: var(--text-dim); font-size: 0.7rem; margin-top: 1.2rem; }
+
+  @media (max-width: 600px) {
+    .sidebar { display: none; }
+    .main { padding: 1.5rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sidebar">
+  <h2>SYSTEM</h2>
+  <div class="stat-block">
+    <span class="stat-label">UPTIME</span>
+    <span class="stat-value" id="uptime" style="font-size:0.78rem">--</span>
+  </div>
+  <div class="stat-block">
+    <span class="stat-label">CPU</span>
+    <span class="stat-value" id="cpu-pct">--</span>
+    <span class="stat-sub">usage</span>
+    <div class="stat-bar"><div class="stat-bar-fill" id="cpu-bar"></div></div>
+  </div>
+  <div class="stat-block">
+    <span class="stat-label">CPU TEMP</span>
+    <span class="stat-value" id="cpu-temp">--</span>
+    <span class="stat-sub">Tctl</span>
+  </div>
+  <div class="stat-block">
+    <span class="stat-label">CASE</span>
+    <span class="stat-value" id="coolant-temp">--</span>
+    <span class="stat-sub">coolant</span>
+  </div>
+  <div class="stat-block">
+    <span class="stat-label">RAM</span>
+    <span class="stat-value" id="ram-pct">--</span>
+    <span class="stat-sub" id="ram-gb"></span>
+    <div class="stat-bar"><div class="stat-bar-fill" id="ram-bar"></div></div>
+  </div>
+  <div class="stat-block" id="gpu0-block" style="display:none">
+    <span class="stat-label" id="gpu0-label">GPU0</span>
+    <span class="stat-value" id="gpu0-util">--</span>
+    <span class="stat-temp" id="gpu0-temp" style="color:var(--green)">--</span>
+    <span class="stat-sub" id="gpu0-vram"></span>
+    <div class="stat-bar"><div class="stat-bar-fill" id="gpu0-bar"></div></div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<div class="main">
+<div class="container">
+  <header>
+    <h1>&#x1F5A5; Ripper</h1>
+    <p>192.168.49.20</p>
+    <div class="suspend-hint" id="suspend-hint">&#x1F7E8; Some services suspended</div>
+  </header>
+  <div class="service-list" id="service-list"></div>
+  <div id="shares-section" style="margin-top:1.5rem;display:none">
+    <h3 style="font-size:0.8rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">Samba Shares</h3>
+    <div id="shares-list"></div>
+  </div>
+  <div class="timestamp" id="timestamp"></div>
+</div>
+</div>
+
+<script>
+const SERVICE_LIST = document.getElementById('service-list');
+const TIMESTAMP = document.getElementById('timestamp');
+const SUSPEND_HINT = document.getElementById('suspend-hint');
+
+function barClass(pct) {
+  if (pct > 90) return 'bar-red';
+  if (pct > 75) return 'bar-orange';
+  if (pct > 50) return 'bar-yellow';
+  return 'bar-green';
+}
+function tempColor(c) {
+  if (c > 85) return 'var(--red)';
+  if (c > 75) return 'var(--orange)';
+  if (c > 65) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+function renderStats(data) {
+  let uptimeEl = document.getElementById('uptime');
+  uptimeEl.textContent = data.uptime || '--';
+
+  document.getElementById('cpu-pct').textContent = data.cpu_pct + '%';
+  let cpuBar = document.getElementById('cpu-bar');
+  cpuBar.style.width = data.cpu_pct + '%';
+  cpuBar.className = 'stat-bar-fill ' + barClass(data.cpu_pct);
+
+  let cpuTemp = document.getElementById('cpu-temp');
+  if (data.cpu_temp_c != null) {
+    cpuTemp.textContent = data.cpu_temp_c + '\u00B0C';
+    cpuTemp.style.color = tempColor(data.cpu_temp_c);
+  } else { cpuTemp.textContent = '--'; }
+
+  let coolantTemp = document.getElementById('coolant-temp');
+  if (data.coolant_temp_c != null) {
+    coolantTemp.textContent = data.coolant_temp_c + '\u00B0C';
+    coolantTemp.style.color = tempColor(data.coolant_temp_c);
+  } else { coolantTemp.textContent = '--'; }
+
+  let r = data.ram;
+  document.getElementById('ram-pct').textContent = r.pct + '%';
+  document.getElementById('ram-gb').textContent = Math.round(r.used_mb/1024) + ' / ' + Math.round(r.total_mb/1024) + ' GB';
+  let ramBar = document.getElementById('ram-bar');
+  ramBar.style.width = r.pct + '%';
+  ramBar.className = 'stat-bar-fill ' + barClass(r.pct);
+
+  (data.gpus || []).forEach((gpu, i) => {
+    let block = document.getElementById('gpu' + i + '-block');
+    if (!block) return;
+    block.style.display = 'flex';
+    document.getElementById('gpu' + i + '-label').textContent = gpu.name.split(' ').slice(-2).join(' ');
+    document.getElementById('gpu' + i + '-util').textContent = gpu.util_pct + '%';
+    document.getElementById('gpu' + i + '-temp').textContent = gpu.temp_c + '\u00B0C';
+    document.getElementById('gpu' + i + '-temp').style.color = tempColor(gpu.temp_c);
+    document.getElementById('gpu' + i + '-vram').textContent = Math.round(gpu.vram_used_mb/1024) + ' / ' + Math.round(gpu.vram_total_mb/1024) + ' GB';
+    let bar = document.getElementById('gpu' + i + '-bar');
+    let vramPct = gpu.vram_used_mb / gpu.vram_total_mb * 100;
+    bar.style.width = vramPct + '%';
+    bar.className = 'stat-bar-fill ' + barClass(vramPct);
+  });
+}
+
+function render(services) {
+  let hasSuspended = false;
+  SERVICE_LIST.innerHTML = services.map(s => {
+    if (s.suspended) hasSuspended = true;
+    let typeCls, typeLabel;
+    if (s.suspended) {
+      typeCls = 'type-suspended';
+      typeLabel = '[suspended]';
+    } else if (s.type_healthy) {
+      typeCls = 'type-up';
+      typeLabel = '[' + s.type + ']';
+    } else {
+      typeCls = 'type-down';
+      typeLabel = '[' + s.type + ']';
+    }
+
+    let portCol;
+    if (s.port == null) {
+      portCol = '<span class="service-port port-none">\u2014</span>';
+    } else if (s.suspended) {
+      portCol = '<span class="service-port port-suspended">:' + s.port + '</span>';
+    } else if (s.port_healthy) {
+      portCol = '<span class="service-port port-up">:' + s.port + '</span>';
+    } else {
+      portCol = '<span class="service-port port-down">:' + s.port + '</span>';
+    }
+
+    let nameClass = s.suspended ? 'service-name suspended-name' : 'service-name';
+    let inner = '<span class="' + nameClass + '">' + s.name + '</span>' +
+      '<span class="service-type ' + typeCls + '">' + typeLabel + '</span>' +
+      portCol;
+
+    if (s.port != null) {
+      return '<a href="http://ripper.sgt.local:' + s.port + '" class="service-row" target="_blank">' + inner + '</a>';
+    } else {
+      return '<div class="service-row">' + inner + '</div>';
+    }
+  }).join('');
+
+  SUSPEND_HINT.style.display = hasSuspended ? 'block' : 'none';
+}
+
+function renderShares(shares) {
+  const section = document.getElementById('shares-section');
+  const list = document.getElementById('shares-list');
+  if (!shares || shares.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = shares.map(s => {
+    let totalGB = (s.total_bytes / 1e9).toFixed(1);
+    let usedGB = (s.used_bytes / 1e9).toFixed(1);
+    let freeGB = (s.free_bytes / 1e9).toFixed(1);
+    let pct = s.used_pct;
+    let barCls = barClass(pct);
+    let status = s.accessible ? '' : ' (unavailable)';
+    return '<div class="service-row" style="grid-template-columns:180px 1fr">' +
+      '<span class="service-name">[' + s.name + ']' + status + '</span>' +
+      '<div style="text-align:right"><span class="stat-sub" style="color:var(--text-dim)">' + usedGB + ' / ' + totalGB + ' GB</span>' +
+      '<div class="stat-bar" style="margin-top:3px"><div class="stat-bar-fill ' + barCls + '" style="width:' + pct + '%"></div></div></div>' +
+    '</div>';
+  }).join('');
+}
+
+async function refresh() {
+  try {
+    const [hResp, sResp, shResp] = await Promise.all([
+      fetch('/api/health?t=' + Date.now()),
+      fetch('/api/stats?t=' + Date.now()),
+      fetch('/api/shares?t=' + Date.now())
+    ]);
+    if (hResp.ok) {
+      const hData = await hResp.json();
+      render(hData.services);
+      const d = new Date(hData.checked_at * 1000);
+      TIMESTAMP.textContent = 'Last checked: ' + d.toLocaleTimeString();
+    }
+    if (sResp.ok) {
+      renderStats(await sResp.json());
+    }
+    if (shResp.ok) {
+      const shData = await shResp.json();
+      renderShares(shData.shares);
+    }
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  }
+}
+
+// Initial dummy render
+const DUMMY = [
+  {name:"Caddy", type:"container", type_healthy:true, port:80, port_healthy:true, suspended:false},
+  {name:"Redis", type:"container", type_healthy:true, port:6379, port_healthy:true, suspended:false},
+  {name:"Qwen 27B", type:"container", type_healthy:true, port:5000, port_healthy:true, suspended:false},
+  {name:"MiniCPM-V", type:"container", type_healthy:true, port:5001, port_healthy:true, suspended:false},
+  {name:"ComfyUI", type:"systemd", type_healthy:true, port:8189, port_healthy:true, suspended:false},
+  {name:"Marinara", type:"container", type_healthy:true, port:7860, port_healthy:true, suspended:false},
+  {name:"Kanka", type:"container", type_healthy:true, port:8880, port_healthy:true, suspended:false},
+  {name:"Hermes Gateway", type:"systemd", type_healthy:true, port:null, suspended:false},
+];
+render(DUMMY);
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
