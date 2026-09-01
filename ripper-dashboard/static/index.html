@@ -142,6 +142,7 @@
     <span class="stat-value" id="gpu0-util">--</span>
     <span class="stat-temp" id="gpu0-temp" style="color:var(--green)">--</span>
     <span class="stat-sub" id="gpu0-vram"></span>
+    <span class="stat-sub" id="gpu0-power"></span>
     <div class="stat-bar"><div class="stat-bar-fill" id="gpu0-bar"></div></div>
   </div>
 </aside>
@@ -218,6 +219,8 @@ function renderStats(data) {
     document.getElementById('gpu' + i + '-temp').textContent = gpu.temp_c + '\u00B0C';
     document.getElementById('gpu' + i + '-temp').style.color = tempColor(gpu.temp_c);
     document.getElementById('gpu' + i + '-vram').textContent = Math.round(gpu.vram_used_mb/1024) + ' / ' + Math.round(gpu.vram_total_mb/1024) + ' GB';
+    let pwr = document.getElementById('gpu' + i + '-power');
+    if (pwr) pwr.textContent = (gpu.power_w != null && gpu.power_w !== '') ? Math.round(gpu.power_w) + ' W' : '--';
     let bar = document.getElementById('gpu' + i + '-bar');
     let vramPct = gpu.vram_used_mb / gpu.vram_total_mb * 100;
     bar.style.width = vramPct + '%';

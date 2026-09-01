@@ -74,13 +74,13 @@ class StatusHandler(BaseHTTPRequestHandler):
     def _gpu_stats(self):
         try:
             out = subprocess.check_output(
-                ["nvidia-smi", "--query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total",
+                ["nvidia-smi", "--query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw",
                  "--format=csv,noheader,nounits"], timeout=5
             ).decode()
             gpus = []
             for i, line in enumerate(out.strip().splitlines()):
                 parts = [p.strip() for p in line.split(",")]
-                if len(parts) >= 5:
+                if len(parts) >= 6:
                     gpus.append({
                         "index": i,
                         "name": parts[0],
@@ -88,6 +88,7 @@ class StatusHandler(BaseHTTPRequestHandler):
                         "temp_c": int(parts[2]),
                         "vram_used_mb": int(parts[3]),
                         "vram_total_mb": int(parts[4]),
+                        "power_w": float(parts[5]) if parts[5] else 0.0,
                     })
             self._json_response(200, {"gpus": gpus})
         except Exception as e:

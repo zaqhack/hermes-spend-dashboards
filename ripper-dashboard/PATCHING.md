@@ -120,6 +120,9 @@ Reconstructed from the skill + session history. Roughly chronological:
 - **Aug 2026** — Post-reboot stale-cache pitfall documented (future
   `checked_at` from a clock step makes everything look down; fix = restart
   the dashboard container).
+- **Aug 31 2026** — GPU power draw added to the sidebar: `service-status.py`
+  `/gpu-stats` now queries `power.draw` and returns `power_w` per GPU;
+  `gpu0-power` renders in the GPU 0 block (`<span class="stat-sub">`).
 
 ---
 
