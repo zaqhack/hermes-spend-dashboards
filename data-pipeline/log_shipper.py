@@ -141,6 +141,32 @@ def load_pricing():
     return cache.get("pricing", {})
 
 
+def resolve_pricing(model, pricing):
+    """Look up pricing for a model slug, tolerating provider routing tags.
+
+    Hermes logs the model exactly as configured, which for Nous-routed calls
+    carries a region/variant suffix (e.g. 'deepseek/deepseek-v4.1-flash:US').
+    Those suffixed slugs are NOT OpenRouter catalog entries, so a naive
+    pricing.get(model) misses and every call silently costs $0.00 — which is
+    what broke the green cost display fleet-wide after the Oct 2026 switch to
+    deepseek-v4.1-flash:US. Try the exact slug first, then the bare slug with
+    the ':tag' stripped, then '~'-prefixed / '-latest' aliases.
+    """
+    if not model:
+        return {}
+    bare = model.split(":", 1)[0]
+    candidates = [model, bare]
+    if bare.startswith("~"):
+        candidates.append(bare.lstrip("~"))
+    if bare.endswith("-latest"):
+        candidates.append(bare[:-len("-latest")])
+    for cand in candidates:
+        p = pricing.get(cand)
+        if p:
+            return p
+    return {}
+
+
 def compute_call_cost(model, input_tokens, output_tokens, cache_read, pricing):
     """
     Compute the cost of a single API call.
@@ -151,7 +177,7 @@ def compute_call_cost(model, input_tokens, output_tokens, cache_read, pricing):
 
     All prices are per-token from the OpenRouter models API.
     """
-    p = pricing.get(model, {})
+    p = resolve_pricing(model, pricing)
     prompt_price = p.get("prompt", 0)
     completion_price = p.get("completion", 0)
     cache_read_price = p.get("cache_read", 0)
@@ -351,6 +377,18 @@ def main():
     # Parse
     lines = new_content.strip().split("\n")
     print(f"Processing {len(lines)} new log lines from {AGENT_NAME}...")
+
+    # Drift alarm: a model missing from the pricing catalog silently bills $0,
+    # which blanks the green cost display and understates InfluxDB/Grafana
+    # spend with no error anywhere. Surface it every run.
+    seen_models = set(re.findall(r"model=([^\s,]+)", new_content))
+    unpriced = sorted(m for m in seen_models if not resolve_pricing(m, pricing))
+    if unpriced:
+        print(
+            f"  WARNING: {len(unpriced)} model(s) missing from the pricing catalog "
+            f"(cost recorded as $0.00): {', '.join(unpriced)}",
+            file=sys.stderr,
+        )
 
     influx_lines = parse_log_lines(lines, pricing, AGENT_NAME)
 
